@@ -33,6 +33,7 @@ import com.google.ar.core.Config.CloudAnchorMode;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager;
 import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper;
+import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager;
 import com.google.ar.core.Session;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.Scene;
@@ -56,6 +57,12 @@ public class CloudAnchorFragment extends ArFragment {
   // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
   private final CloudAnchorManager cloudAnchorManager = new CloudAnchorManager();
   private final SnackbarHelper snackbarHelper = new SnackbarHelper();
+
+  // [3] Storing IDs and Resolving Anchors (Part 3)
+  // we assign short codes to the long Cloud Anchor IDs to make it easier for another user to enter
+  // manually. We store the Cloud Anchor IDs as values in a key-value table, using the Shared Preferences API;
+  // the table will persist even if the app is killed and restarted.
+  private final StorageManager storageManager = new StorageManager();
 
   @Override
   @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -147,14 +154,19 @@ public class CloudAnchorFragment extends ArFragment {
   private synchronized void onHostedAnchorAvailable(Anchor anchor) {
     CloudAnchorState cloudState = anchor.getCloudAnchorState();
     if (cloudState == CloudAnchorState.SUCCESS) {
+      // [3] Storing IDs and Resolving Anchors (Part 3)
+      // we assign short codes to the long Cloud Anchor IDs to make it easier for another user to enter
+      // manually. We store the Cloud Anchor IDs as values in a key-value table, using the Shared Preferences API;
+      // the table will persist even if the app is killed and restarted.
+      int shortCode = storageManager.nextShortCode(getActivity());
+      storageManager.storeUsingShortCode(getActivity(), shortCode, anchor.getCloudAnchorId());
       snackbarHelper.showMessage(
-              getActivity(), "Cloud Anchor Hosted. ID: " + anchor.getCloudAnchorId());
+              getActivity(), "Cloud Anchor Hosted. Short code: " + shortCode);
       setNewAnchor(anchor);
     } else {
       snackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
     }
   }
-
 
   // [1] Configuring ARCore:
   // We will modify the app to create a hosted anchor on a user tap instead of a regular one.
@@ -165,4 +177,5 @@ public class CloudAnchorFragment extends ArFragment {
     config.setCloudAnchorMode(CloudAnchorMode.ENABLED);
     return config;
   }
+
 }
