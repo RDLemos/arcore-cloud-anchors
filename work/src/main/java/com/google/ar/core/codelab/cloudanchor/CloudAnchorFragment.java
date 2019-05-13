@@ -32,6 +32,7 @@ import com.google.ar.core.Config;
 import com.google.ar.core.Config.CloudAnchorMode;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager;
+import com.google.ar.core.codelab.cloudanchor.helpers.FirebaseManager;
 import com.google.ar.core.codelab.cloudanchor.helpers.ResolveDialogFragment;
 import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper;
 import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager;
@@ -68,6 +69,10 @@ public class CloudAnchorFragment extends ArFragment {
   // the table will persist even if the app is killed and restarted.
   private final StorageManager storageManager = new StorageManager();
 
+  // [4] Storing IDs and Resolving Anchors (Part 4)
+  // Using Firebase to share the Cloud Anchor IDs between different devices.
+  private FirebaseManager firebaseManager;
+
   @Override
   @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
   public void onAttach(Context context) {
@@ -76,6 +81,10 @@ public class CloudAnchorFragment extends ArFragment {
         .setSource(context, R.raw.andy)
         .build()
         .thenAccept(renderable -> andyRenderable = renderable);
+
+    // [4] Storing IDs and Resolving Anchors (Part 4)
+    // Using Firebase to share the Cloud Anchor IDs between different devices.
+    firebaseManager = new FirebaseManager(context);
   }
 
   @Override
@@ -152,18 +161,21 @@ public class CloudAnchorFragment extends ArFragment {
   // [3c] Resolving Anchors
   // Add code to resolve Cloud Anchors
   private synchronized void onShortCodeEntered(int shortCode) {
-    String cloudAnchorId = storageManager.getCloudAnchorId(getActivity(), shortCode);
-    if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
-      snackbarHelper.showMessage(
-              getActivity(),
-              "A Cloud Anchor ID for the short code " + shortCode + " was not found.");
-      return;
-    }
-    resolveButton.setEnabled(false);
-    cloudAnchorManager.resolveCloudAnchor(
-            getArSceneView().getSession(),
-            cloudAnchorId,
-            anchor -> onResolvedAnchorAvailable(anchor, shortCode));
+    // [4] Storing IDs and Resolving Anchors (Part 4)
+    // Using Firebase to share the Cloud Anchor IDs between different devices.
+    firebaseManager.getCloudAnchorId(shortCode, cloudAnchorId -> {
+      if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
+        snackbarHelper.showMessage(
+                getActivity(),
+                "A Cloud Anchor ID for the short code " + shortCode + " was not found.");
+        return;
+      }
+      resolveButton.setEnabled(false);
+      cloudAnchorManager.resolveCloudAnchor(
+              getArSceneView().getSession(),
+              cloudAnchorId,
+              anchor -> onResolvedAnchorAvailable(anchor, shortCode));
+    });
   }
 
   private synchronized void onResolvedAnchorAvailable(Anchor anchor, int shortCode) {
@@ -214,14 +226,27 @@ public class CloudAnchorFragment extends ArFragment {
   private synchronized void onHostedAnchorAvailable(Anchor anchor) {
     CloudAnchorState cloudState = anchor.getCloudAnchorState();
     if (cloudState == CloudAnchorState.SUCCESS) {
+      String cloudAnchorId = anchor.getCloudAnchorId();
       // [3] Storing IDs and Resolving Anchors (Part 3)
       // we assign short codes to the long Cloud Anchor IDs to make it easier for another user to enter
       // manually. We store the Cloud Anchor IDs as values in a key-value table, using the Shared Preferences API;
       // the table will persist even if the app is killed and restarted.
-      int shortCode = storageManager.nextShortCode(getActivity());
-      storageManager.storeUsingShortCode(getActivity(), shortCode, anchor.getCloudAnchorId());
-      snackbarHelper.showMessage(
-              getActivity(), "Cloud Anchor Hosted. Short code: " + shortCode);
+
+      // [4] Storing IDs and Resolving Anchors (Part 4)
+      // Using Firebase to share the Cloud Anchor IDs between different devices.
+      firebaseManager.nextShortCode(shortCode -> {
+        if (shortCode != null) {
+          firebaseManager.storeUsingShortCode(shortCode, cloudAnchorId);
+          snackbarHelper.showMessage(
+                  getActivity(),
+                  "Cloud Anchor Hosted. Short code: " + shortCode);
+        } else {
+          // Firebase could not provide a short code.
+          snackbarHelper
+                  .showMessage(getActivity(), "Cloud Anchor Hosted, but could not "
+                          + "get a short code from Firebase.");
+        }
+      });
       setNewAnchor(anchor);
     } else {
       snackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
