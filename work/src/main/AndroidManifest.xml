@@ -19,6 +19,9 @@
     package="com.google.ar.core.codelab.cloudanchor">
 
   <uses-permission android:name="android.permission.CAMERA"/>
+  <!-- [1] Configuring ARCore -->
+  <uses-permission android:name="android.permission.INTERNET"/>
+
   <!-- This tag indicates that this application requires ARCore.  This results in the application
        only being visible in the Google Play Store on devices that support ARCore. -->
   <uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
@@ -48,5 +51,13 @@
          Application code must still call ArCoreApk.requestInstall() before beginning an ARCore
          sessions, in case the user uninstalls ARCore for any reason. -->
     <meta-data android:name="com.google.ar.core" android:value="required" />
+
+    <!-- [1] Configuring ARCore :
+    To use Cloud Anchors, you'll need to add an API Key to your app for authentication with the
+    ARCore Cloud Anchor Service. -->
+    <meta-data
+        android:name="com.google.android.ar.API_KEY"
+        android:value="AIzaSyB6HrP-X2rNyJ_fGFmmwx8Fc6WqlZK3p6I"/>
+
   </application>
 </manifest>

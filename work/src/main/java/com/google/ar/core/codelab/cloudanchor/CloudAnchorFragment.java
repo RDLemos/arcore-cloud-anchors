@@ -27,12 +27,19 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
+import com.google.ar.core.Anchor.CloudAnchorState;
+import com.google.ar.core.Config;
+import com.google.ar.core.Config.CloudAnchorMode;
 import com.google.ar.core.HitResult;
+import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager;
+import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper;
+import com.google.ar.core.Session;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+
 
 /**
  * Main Fragment for the Cloud Anchors Codelab.
@@ -44,6 +51,11 @@ public class CloudAnchorFragment extends ArFragment {
   private Scene arScene;
   private AnchorNode anchorNode;
   private ModelRenderable andyRenderable;
+
+  // [2] Creating a Hosted Anchor:
+  // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
+  private final CloudAnchorManager cloudAnchorManager = new CloudAnchorManager();
+  private final SnackbarHelper snackbarHelper = new SnackbarHelper();
 
   @Override
   @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -58,20 +70,24 @@ public class CloudAnchorFragment extends ArFragment {
   @Override
   public View onCreateView(
       LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-    // Inflate from the Layout XML file.
-    View rootView = inflater.inflate(R.layout.cloud_anchor_fragment, container, false);
-    LinearLayout arContainer = rootView.findViewById(R.id.ar_container);
+        // Inflate from the Layout XML file.
+        View rootView = inflater.inflate(R.layout.cloud_anchor_fragment, container, false);
+        LinearLayout arContainer = rootView.findViewById(R.id.ar_container);
 
-    // Call the ArFragment's implementation to get the AR View.
-    View arView = super.onCreateView(inflater, arContainer, savedInstanceState);
-    arContainer.addView(arView);
+        // Call the ArFragment's implementation to get the AR View.
+        View arView = super.onCreateView(inflater, arContainer, savedInstanceState);
+        arContainer.addView(arView);
 
-    Button clearButton = rootView.findViewById(R.id.clear_button);
-    clearButton.setOnClickListener(v -> onClearButtonPressed());
+        Button clearButton = rootView.findViewById(R.id.clear_button);
+        clearButton.setOnClickListener(v -> onClearButtonPressed());
 
-    arScene = getArSceneView().getScene();
-    setOnTapArPlaneListener((hitResult, plane, motionEvent) -> onArPlaneTap(hitResult));
-    return rootView;
+        arScene = getArSceneView().getScene();
+        // Add this line right below:
+        arScene.addOnUpdateListener(frameTime -> cloudAnchorManager.onUpdate());
+        // [2] Creating a Hosted Anchor:
+        // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
+        setOnTapArPlaneListener((hitResult, plane, motionEvent) -> onArPlaneTap(hitResult));
+        return rootView;
   }
 
   private synchronized void onArPlaneTap(HitResult hitResult) {
@@ -81,10 +97,21 @@ public class CloudAnchorFragment extends ArFragment {
     }
     Anchor anchor = hitResult.createAnchor();
     setNewAnchor(anchor);
+
+    // [2] Creating a Hosted Anchor:
+    // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
+    snackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
+    cloudAnchorManager.hostCloudAnchor(
+            getArSceneView().getSession(), anchor, this::onHostedAnchorAvailable);
   }
 
   private synchronized void onClearButtonPressed() {
     // Clear the anchor from the scene.
+
+    // [2] Creating a Hosted Anchor:
+    // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
+    cloudAnchorManager.clearListeners();
+
     setNewAnchor(null);
   }
 
@@ -113,5 +140,29 @@ public class CloudAnchorFragment extends ArFragment {
       andy.setRenderable(andyRenderable);
       andy.select();
     }
+  }
+
+  // [2] Creating a Hosted Anchor:
+  // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
+  private synchronized void onHostedAnchorAvailable(Anchor anchor) {
+    CloudAnchorState cloudState = anchor.getCloudAnchorState();
+    if (cloudState == CloudAnchorState.SUCCESS) {
+      snackbarHelper.showMessage(
+              getActivity(), "Cloud Anchor Hosted. ID: " + anchor.getCloudAnchorId());
+      setNewAnchor(anchor);
+    } else {
+      snackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
+    }
+  }
+
+
+  // [1] Configuring ARCore:
+  // We will modify the app to create a hosted anchor on a user tap instead of a regular one.
+  // To do that, you will need to configure the ARCore Session to enable Cloud Anchors.
+  @Override
+  protected Config getSessionConfiguration(Session session) {
+    Config config = super.getSessionConfiguration(session);
+    config.setCloudAnchorMode(CloudAnchorMode.ENABLED);
+    return config;
   }
 }
