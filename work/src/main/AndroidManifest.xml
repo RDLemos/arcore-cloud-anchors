@@ -52,12 +52,5 @@
          sessions, in case the user uninstalls ARCore for any reason. -->
     <meta-data android:name="com.google.ar.core" android:value="required" />
 
-    <!-- [1] Configuring ARCore :
-    To use Cloud Anchors, you'll need to add an API Key to your app for authentication with the
-    ARCore Cloud Anchor Service. -->
-    <meta-data
-        android:name="com.google.android.ar.API_KEY"
-        android:value="AIzaSyB6HrP-X2rNyJ_fGFmmwx8Fc6WqlZK3p6I"/>
-
   </application>
 </manifest>
