@@ -32,6 +32,7 @@ import com.google.ar.core.Config;
 import com.google.ar.core.Config.CloudAnchorMode;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager;
+import com.google.ar.core.codelab.cloudanchor.helpers.ResolveDialogFragment;
 import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper;
 import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager;
 import com.google.ar.core.Session;
@@ -52,6 +53,9 @@ public class CloudAnchorFragment extends ArFragment {
   private Scene arScene;
   private AnchorNode anchorNode;
   private ModelRenderable andyRenderable;
+  // [3b] Storing IDs and Resolving Anchors (Part 3)
+  // Add UI elements that will allow us to enter short codes and recreate the anchors.
+  private Button resolveButton;
 
   // [2] Creating a Hosted Anchor:
   // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
@@ -88,6 +92,11 @@ public class CloudAnchorFragment extends ArFragment {
         Button clearButton = rootView.findViewById(R.id.clear_button);
         clearButton.setOnClickListener(v -> onClearButtonPressed());
 
+        // [3b] Storing IDs and Resolving Anchors (Part 3)
+        // Add UI elements that will allow us to enter short codes and recreate the anchors.
+        resolveButton = rootView.findViewById(R.id.resolve_button);
+        resolveButton.setOnClickListener(v -> onResolveButtonPressed());
+
         arScene = getArSceneView().getScene();
         // Add this line right below:
         arScene.addOnUpdateListener(frameTime -> cloudAnchorManager.onUpdate());
@@ -105,6 +114,10 @@ public class CloudAnchorFragment extends ArFragment {
     Anchor anchor = hitResult.createAnchor();
     setNewAnchor(anchor);
 
+    // [3b] Storing IDs and Resolving Anchors (Part 3)
+    // Add UI elements that will allow us to enter short codes and recreate the anchors.
+    resolveButton.setEnabled(false);
+
     // [2] Creating a Hosted Anchor:
     // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
     snackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
@@ -119,7 +132,18 @@ public class CloudAnchorFragment extends ArFragment {
     // It's time to create a hosted anchor that will be uploaded to the ARCore Cloud Anchor Service.
     cloudAnchorManager.clearListeners();
 
+    // [3b] Storing IDs and Resolving Anchors (Part 3)
+    // Add UI elements that will allow us to enter short codes and recreate the anchors.
+    resolveButton.setEnabled(true);
+
     setNewAnchor(null);
+  }
+
+  // [3b] Storing IDs and Resolving Anchors (Part 3)
+  // Add UI elements that will allow us to enter short codes and recreate the anchors.
+  private synchronized void onResolveButtonPressed() {
+    ResolveDialogFragment dialog = new ResolveDialogFragment();
+    dialog.show(getFragmentManager(), "Resolve");
   }
 
   // Modify the renderables when a new anchor is available.
