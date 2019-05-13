@@ -142,8 +142,44 @@ public class CloudAnchorFragment extends ArFragment {
   // [3b] Storing IDs and Resolving Anchors (Part 3)
   // Add UI elements that will allow us to enter short codes and recreate the anchors.
   private synchronized void onResolveButtonPressed() {
-    ResolveDialogFragment dialog = new ResolveDialogFragment();
+    // [3c] Resolving Anchors
+    // Add code to resolve Cloud Anchors
+    ResolveDialogFragment dialog = ResolveDialogFragment.createWithOkListener(
+            this::onShortCodeEntered);;
     dialog.show(getFragmentManager(), "Resolve");
+  }
+
+  // [3c] Resolving Anchors
+  // Add code to resolve Cloud Anchors
+  private synchronized void onShortCodeEntered(int shortCode) {
+    String cloudAnchorId = storageManager.getCloudAnchorId(getActivity(), shortCode);
+    if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
+      snackbarHelper.showMessage(
+              getActivity(),
+              "A Cloud Anchor ID for the short code " + shortCode + " was not found.");
+      return;
+    }
+    resolveButton.setEnabled(false);
+    cloudAnchorManager.resolveCloudAnchor(
+            getArSceneView().getSession(),
+            cloudAnchorId,
+            anchor -> onResolvedAnchorAvailable(anchor, shortCode));
+  }
+
+  private synchronized void onResolvedAnchorAvailable(Anchor anchor, int shortCode) {
+    CloudAnchorState cloudState = anchor.getCloudAnchorState();
+    if (cloudState == CloudAnchorState.SUCCESS) {
+      snackbarHelper.showMessage(getActivity(), "Cloud Anchor Resolved. Short code: " + shortCode);
+      setNewAnchor(anchor);
+    } else {
+      snackbarHelper.showMessage(
+              getActivity(),
+              "Error while resolving anchor with short code "
+                      + shortCode
+                      + ". Error: "
+                      + cloudState.toString());
+      resolveButton.setEnabled(true);
+    }
   }
 
   // Modify the renderables when a new anchor is available.
